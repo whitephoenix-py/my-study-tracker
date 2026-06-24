@@ -131,13 +131,22 @@ st.set_page_config(page_title="My Study Tracker", page_icon="🎓", layout="wide
 # ==========================================================
 # 2. ПЕРЕКЛЮЧАТЕЛИ И КАСТОМИЗАЦИЯ В SIDEBAR
 # ==========================================================
-lang_choice = st.sidebar.selectbox("Language / Язык", ["RU", "EN"])
+# Добавлен ключ key, чтобы выбор языка не сбрасывал состояние других виджетов
+lang_choice = st.sidebar.selectbox("Language / Язык", ["RU", "EN"], key="persistent_lang")
 t = LANGUAGES[lang_choice]
 
 st.sidebar.markdown("---")
 st.sidebar.header(t["sidebar_theme"])
-bg_color = st.sidebar.color_picker(t["bg_color_label"], "#ffffff")
-text_color = st.sidebar.color_picker(t["text_color_label"], "#1a1a1a")
+
+# ИСПРАВЛЕНИЕ: Цвета теперь читаются из URL и привязываются к постоянным key, чтобы не слетать
+initial_bg = st.query_params.get("bg_color", "#ffffff")
+initial_text = st.query_params.get("text_color", "#1a1a1a")
+
+bg_color = st.sidebar.color_picker(t["bg_color_label"], value=initial_bg, key="persistent_bg")
+text_color = st.sidebar.color_picker(t["text_color_label"], value=initial_text, key="persistent_text")
+
+st.query_params["bg_color"] = bg_color
+st.query_params["text_color"] = text_color
 
 # ==========================================================
 # 3. МАГИЯ CSS (Цвета интерфейса + Скрытие подсказки ввода)
@@ -155,7 +164,7 @@ custom_css = f"""
     div[data-testid="stMetricValue"], div[data-testid="stMetricLabel"] {{
         color: {text_color} !important;
     }}
-    /* ТРЕТЬЕ ТРЕБОВАНИЕ: Полностью убираем надпись 'Press enter to submit form' */
+    /* Полностью убираем надпись 'Press enter to submit form' */
     div[data-testid="stFormSubmissionHint"] {{
         display: none !important;
     }}
@@ -205,7 +214,8 @@ with st.sidebar.form("add_course_form", clear_on_submit=True):
         st.rerun()
 
 # === СОРТИРОВКА ПО ПАПКАМ ===
-c.execute("SELECT id, name, total_lessons FROM courses")
+# ИСПРАВЛЕНИЕ: Добавлена сортировка ORDER BY id DESC, чтобы новые курсы были вверху без ошибки отсутствия колонки даты
+c.execute("SELECT id, name, total_lessons FROM courses ORDER BY id DESC")
 all_courses = c.fetchall()
 active_list = []
 completed_list = []
